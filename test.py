@@ -63,8 +63,8 @@ s = requests.Session()
 b=time.time()
 # appkey='HWHT'
 # appsecret='hwht_123456'
-appkey='haowaihao'
-appsecret='L9HASRNCM0IQ'
+appkey=''
+appsecret=''
 
 def worker(n):
     while  not tasks.empty():
@@ -108,7 +108,7 @@ def worker(n):
         logging.info(values)
         b=time.time()
         # r = s.post("http://39.106.102.219:9110/v2/axb/mode102",json.dumps(values),headers=headers)
-        r = s.post("http://60.205.230.55:9110/v2/axb/mode101",json.dumps(values),headers=headers)
+        r = s.post("http://localhost:9110/v2/axb/mode101",json.dumps(values),headers=headers)
         logging.info(r.json())
         e=time.time()
         logging.info(e-b)
