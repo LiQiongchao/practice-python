@@ -1,32 +1,16 @@
 import requests ;
-import sys
 from flask import json,Flask,make_response;
 import time
 app = Flask(__name__)
 import hashlib
-import sys
 from datetime import datetime
 from gevent.queue import Queue
 import gevent
-from cloghandler import ConcurrentRotatingFileHandler
 import logging
 import os
 LOGLEVEL='DEBUG'
-
-def f_log_concurrent(log_file):
-    LEVELS = { 'debug':logging.DEBUG,'info':logging.INFO,'error':logging.ERROR}
-    log = logging.getLogger()
-    level=LEVELS.get(LOGLEVEL,logging.NOTSET)
-
-    # Use an absolute path to prevent file rotation trouble.
-    logfile = os.path.abspath(log_file)
-    # Rotate log after reaching 1G, keep 60 old copies.
-    rotateHandler = ConcurrentRotatingFileHandler(logfile, "a", 1024*1024*1024, 60,encoding="utf-8")
-    fm=logging.Formatter("%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s","%Y-%m-%d %H:%M:%S",)
-    rotateHandler.setFormatter(fm)
-    log.addHandler(rotateHandler)
-    log.setLevel(level)
-    return log
+from gevent import monkey
+monkey.patch_all()
 
 def CheckSID(dict1, secret):
     if isinstance(dict1, dict):
@@ -52,50 +36,55 @@ def CheckSID(dict1, secret):
     return a2md5value
 
 
-ts=datetime.now().strftime('%Y%m%d%H%M%S%f')[:17]
+
 subts=datetime.now().strftime('%Y%m%d%H%M%S')
 tasks =  Queue()
 
-p=sys.argv[1]
-other=int(p)
-a=other+1
-s = requests.Session()
-b=time.time()
-# appkey=''
-# appsecret=''
 appkey=''
 appsecret=''
+# 主叫
+p=""
+# 被叫
+q=""
+telx=""
+other=int(p)
+a=int(q)+1
+s = requests.Session()
+b=time.time()
 
 def worker(n):
     while  not tasks.empty():
         task = tasks.get()
         print('Worker %s got task %s' %  (n, task))
-        print(a+task,other+task)
 
-        value={"telX":'',
-                "expiration":"1800",
+        ts = datetime.now().strftime('%Y%m%d%H%M%S%f')[:17]
+
+        subts = datetime.now().strftime('%Y%m%d%H%M%S')
+        print(a + task, other + task)
+        value={"telX":telx,
+                "expiration":"50",
                 "requestId":str(a+task),
                 "callrestrict":"1",
                 "calldisplayshow":"1",
                 "calldisplay":"0,0",
                 "callrecording":"1",
                 "subts":subts,
-		"areacode":"029",
+		"areacode":"021",
                 "telA":str(a+task),
-                "anucode":"218,218,218",
+                "anucode":"1,2,3",
                 "telB":str(other+task)}
 
-        values={"telX":'',
-                "expiration":"1800",
+        values={"telX":telx,
+                "expiration":"50",
                 "requestId":str(a+task),
                 "extra":{"callrestrict":"1",
                          "calldisplayshow":"1",
                          "calldisplay":"0,0",
                          "callrecording":"1"},
                 "subts":subts,
-		"areacode":"029",
+		"areacode":"021",
                 "telA":str(a+task),
-                "anucode":"218,218,218",
+                "anucode":"1,2,3",
                 "telB":str(other+task)}
         
         temp_d={'appkey':appkey,'ts':ts}
@@ -107,20 +96,20 @@ def worker(n):
         headers.update(temp_dict)
         logging.info(values)
         b=time.time()
-        r = s.post("http://localhost:9110/v2/axb/mode101",json.dumps(values),headers=headers)
-        logging.info(r.json())
+        r = s.post("http://127.0.0.1:9001/v2/axb/mode101",json.dumps(values),headers=headers)
+        logging.info(r.json(), " telA: ", a+task, " telB: ", other + task)
+        print(r.json())
         e=time.time()
         logging.info(e-b)
         gevent.sleep(0)
     logging.info('Quitting time!')
 
 def boss():
-    for i in range(1,100):
+    for i in range(0,1000):
         tasks.put_nowait(i)
 
 gevent.spawn(boss).join()
 
-f_log_concurrent('test.log')
 gevent.joinall([
     gevent.spawn(worker, 'p1'),
     gevent.spawn(worker, 'p2'),
